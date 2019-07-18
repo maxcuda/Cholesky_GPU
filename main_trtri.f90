@@ -2,6 +2,7 @@ program inverse
 use cholesky
 use cudafor
 use cublas
+use nvtx
 integer, parameter :: n=1024
 complex(8):: A_h(n,n),B_h(n,n)
 complex(8),device :: B(n,n)
@@ -39,22 +40,30 @@ B=A_h
 
 print *,"calling CPU zpotrf and ztrtri"
 ! Call Cholesky
+call nvtxStartRange("zportf CPU",1)
 call zpotrf('L', n, A_h, n, INFO )
+call nvtxEndRange
 ! Compute the inverse 
+call nvtxStartRange("ztrtri CPU",2)
 CALL ztrtri( 'L', 'N', n, A_h, n, INFO )
+call nvtxEndRange
 
 if (info .lt.  0) print *,"Error in CPU path !!!!!!!!!!!!!",info
 
 print *,"calling GPU zpotrf and ztrtri"
 ! Call Cholesky 
+call nvtxStartRange("zportf GPU",1)
 call zpotrf('L', n, B, n, INFO )
+call nvtxEndRange
 ! Compute the inverse 
+call nvtxStartRange("ztrtri GPU",2)
 CALL ZTRTRI( 'L', 'N', n, B, n, INFO )
+B_h=B
+call nvtxEndRange
 if (info .lt.  0) print *,"Error in GPU path !!!!!!!!!!!!!",info
 
 
 ! Copy result back to host to compare it to CPU solution
-B_h=B
 
 print *,"Difference "
    print *,(B_h(1,1)-A_h(1,1))
